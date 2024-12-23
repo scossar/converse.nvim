@@ -7,9 +7,7 @@ local function send_to_python(job_id, message)
   vim.fn.chansend(job_id, message .. "\n")
 end
 
-local current_end_pos = nil
-
-local function create_job(bufnr)
+local function create_job()
   return vim.fn.jobstart({ "python", python_script_path }, {
     on_stdout = function(_, data)
       if data and data[1] and data[1] ~= "" then
@@ -21,6 +19,8 @@ local function create_job(bufnr)
         end
 
         local response = decoded.response
+        local bufnr = decoded.bufnr
+        local end_pos = decoded.end_pos
         local response_lines = vim.split(response, "\n")
         local formatted_response = { "" }
         table.insert(formatted_response, "### Claude")
@@ -30,9 +30,7 @@ local function create_job(bufnr)
         table.insert(formatted_response, "___")
 
         if vim.api.nvim_buf_is_valid(bufnr) then
-          vim.api.nvim_buf_set_lines(bufnr, current_end_pos, current_end_pos, false, formatted_response)
-          -- update the end position
-          current_end_pos = current_end_pos + #formatted_response
+          vim.api.nvim_buf_set_lines(bufnr, end_pos, end_pos, false, formatted_response)
         else
           vim.notify("Buffer no longer valid", vim.log.levels.WARN)
         end
@@ -53,10 +51,8 @@ function M.send_selection()
   local start_pos = vim.fn.getpos("'<")[2]
   local end_pos = vim.fn.getpos("'>")[2]
   if not job then
-    job = create_job(bufnr)
+    job = create_job()
   end
-
-  current_end_pos = end_pos
 
   local lines = vim.fn.getline(start_pos, end_pos)
   local buffer_path = vim.api.nvim_buf_get_name(0)
@@ -70,6 +66,8 @@ function M.send_selection()
 
   local data = {
     filename = buffer_path,
+    bufnr = bufnr,
+    end_pos = end_pos,
     content = text,
   }
   local json = vim.fn.json_encode(data)

@@ -63,12 +63,16 @@ def main():
             filename = data["filename"]
             conversation_name = Path(filename).stem
             content = data["content"]
+            bufnr = data["bufnr"]
+            end_pos = data["end_pos"]
 
             ncm.load_conversation(conversation_name)
             ncm.append_message("user", content)
             response = ncm.send_messages()
             print(json.dumps({
-                "response": response
+                "response": response,
+                "bufnr": bufnr,
+                "end_pos": end_pos
             }), flush=True)
 
         except Exception as e:
