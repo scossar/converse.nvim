@@ -7,6 +7,22 @@ local function send_to_python(job_id, message)
   vim.fn.chansend(job_id, message .. "\n")
 end
 
+M.config = {
+  model = "claude-3-5-sonnet-20241022",
+  max_tokens = 8192,
+  temperature = 0.7,
+  system = "",
+}
+
+local function send_config(job_id)
+  local config_data = {
+    type = "config",
+    config = M.config,
+  }
+
+  send_to_python(job_id, vim.fn.json_encode(config_data))
+end
+
 local function create_job()
   return vim.fn.jobstart({ "python", python_script_path }, {
     on_stdout = function(_, data)
@@ -21,6 +37,25 @@ local function create_job()
         local response = decoded.response
         local bufnr = decoded.bufnr
         local end_pos = decoded.end_pos
+
+        local missing_props = {}
+        if not response then
+          table.insert(missing_props, "response")
+        end
+        if not bufnr then
+          table.insert(missing_props, "bufnr")
+        end
+        if not end_pos then
+          table.insert(missing_props, "end_pos")
+        end
+
+        if #missing_props > 0 then
+          local error_msg =
+            string.format("Missing required properties in API response: %s", table.concat(missing_props, ", "))
+          vim.notify(error_msg, vim.log.levels.Error)
+          return
+        end
+
         local response_lines = vim.split(response, "\n")
         local formatted_response = { "" }
         table.insert(formatted_response, "### Claude")
