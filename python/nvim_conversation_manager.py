@@ -52,6 +52,7 @@ class NvimConversationManager:
 
 
 def main():
+    ncm = NvimConversationManager()
     while True:
         try:
             line = sys.stdin.readline()
@@ -59,8 +60,15 @@ def main():
                 break
 
             data = json.loads(line)
+            filename = data["filename"]
+            conversation_name = Path(filename).stem
+            content = data["content"]
+
+            ncm.load_conversation(conversation_name)
+            ncm.append_message("user", content)
+            response = ncm.send_messages()
             print(json.dumps({
-                "response": data["content"]
+                "response": response
             }), flush=True)
 
         except Exception as e:
@@ -71,36 +79,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# def main():
-#     while True:
-#         try:
-#             line = sys.stdin.readline()
-#             if not line:
-#                 break
-#
-#             # Parse JSON input
-#             data = json.loads(line)
-#
-#             # Process with Anthropic API
-#             client = Anthropic()
-#             response = client.messages.create(
-#                 model=data.get("model", "claude-2"),
-#                 max_tokens=data.get("max_tokens", 1000),
-#                 messages=[{"role": "user", "content": data["prompt"]}]
-#             )
-#
-#             # Send JSON response
-#             print(json.dumps({
-#                 "response": response.content[0].text
-#             }), flush=True)
-#
-#         except Exception as e:
-#             print(json.dumps({
-#                 "error": str(e)
-#             }), file=sys.stderr, flush=True)
-#
-#
-# if __name__ == "__main__":
-#     main()

@@ -1,9 +1,15 @@
 if vim.g.loaded_claudechat then
-	return
+  return
 end
 vim.g.loaded_claudechat = true
 
--- print("Python script path", require("claudechat").python_script_path)
-print("claudechat plugin loaded")
+vim.api.nvim_create_user_command("ClaudeChatSendSelection", function()
+  require("claudechat").send_selection()
+end, { range = true })
 
-require("claudechat").hello_world()
+vim.keymap.set(
+  "v",
+  "<leader>z",
+  ":ClaudeChatSendSelection<CR>",
+  { desc = "[A]sk Claude", noremap = true, silent = true }
+)
