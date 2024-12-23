@@ -7,11 +7,20 @@ local function send_to_python(job_id, message)
   vim.fn.chansend(job_id, message .. "\n")
 end
 
-local function create_job(bufnr, end_pos)
+local current_end_pos = nil
+
+local function create_job(bufnr)
   return vim.fn.jobstart({ "python", python_script_path }, {
     on_stdout = function(_, data)
       if data and data[1] and data[1] ~= "" then
-        local response = data[1]
+        local ok, decoded = pcall(vim.fn.json_decode, data[1])
+
+        if not ok then
+          vim.notify("Failed to decode JSON response:" .. decoded, vim.log.levels.Error)
+          return
+        end
+
+        local response = decoded.response
         local response_lines = vim.split(response, "\n")
         local formatted_response = { "" }
         table.insert(formatted_response, "### Claude")
@@ -21,7 +30,9 @@ local function create_job(bufnr, end_pos)
         table.insert(formatted_response, "___")
 
         if vim.api.nvim_buf_is_valid(bufnr) then
-          vim.api.nvim_buf_set_lines(bufnr, end_pos, end_pos, false, formatted_response)
+          vim.api.nvim_buf_set_lines(bufnr, current_end_pos, current_end_pos, false, formatted_response)
+          -- update the end position
+          current_end_pos = current_end_pos + #formatted_response
         else
           vim.notify("Buffer no longer valid", vim.log.levels.WARN)
         end
@@ -42,8 +53,10 @@ function M.send_selection()
   local start_pos = vim.fn.getpos("'<")[2]
   local end_pos = vim.fn.getpos("'>")[2]
   if not job then
-    job = create_job(bufnr, end_pos)
+    job = create_job(bufnr)
   end
+
+  current_end_pos = end_pos
 
   local lines = vim.fn.getline(start_pos, end_pos)
   local buffer_path = vim.api.nvim_buf_get_name(0)
@@ -67,10 +80,3 @@ function M.send_selection()
 end
 
 return M
-
---Error executing Lua callback: Vim:E474: Invalid argument
--- stack traceback:
---         [C]: in function 'chansend'
---         ...sar/nvim_plugins/claudechat.nvim/lua/claudechat/init.lua:7: in function 'send_to_python'
---         ...sar/nvim_plugins/claudechat.nvim/lua/claudechat/init.lua:66: in function 'send_selection'
---         ...ossar/nvim_plugins/claudechat.nvim/plugin/claudechat.lua:7: in function <...ossar/nvim_plugins/claudechat.nvim/plugin/claudechat.lua:6>
