@@ -166,7 +166,7 @@ function M.setup(opts)
     )
   end
 
-  vim.api.nvim_create_user_command("ClaudeTemp", function(args)
+  vim.api.nvim_create_user_command("ConverseTemp", function(args)
     -- trim whitespace and convert commas to decimal points
     local cleaned_input = args.args:match("^%s*(.-)%s*$"):gsub(",", ".")
     local temp = tonumber(cleaned_input)
