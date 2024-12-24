@@ -2,4 +2,143 @@
 
 A Neovim plugin for chatting with Claude directly from markdown files.
 
-It works, but isn't entirely configurable yet. (an improved version of [https://github.com/scossar/claude.nvim](https://github.com/scossar/claude.nvim))
+I wrote the plugin to help me use LLMs as a learning tool. Switching contexts between my notes and the web UI felt like a distraction.
+
+The plugin requires Neovim >= `0.9.0`, Python >= `3.7`, and some Python dependencies (probably just `anthropic`).
+Here are the imports from `nvim_conversation_manager.py`:
+
+```python
+import sys
+import json
+from pathlib import Path
+from anthropic import Anthropic
+```
+The easiest way I know of for dealing with Python dependencies is to use [`pip`](https://pip.pypa.io/en/stable/getting-started/):
+
+```bash
+pip install anthropic
+```
+Or (better) in a [virtual environment](https://packaging.python.org/en/latest/tutorials/installing-packages/#creating-virtual-environments):
+
+```bash
+python -m venv ~/.venv/converse
+source ~/.venv/converse/bin/activate  # On Unix/macOS
+pip install anthropic
+```
+
+The plugin also requires an Anthropic API key and assumes that `ANTHROPIC_API_KEY` is set as an environmental variable. For example, in your `~/.bashrc` file:
+
+```bash
+export ANTHROPIC_API_KEY='your_anthropic_api_key'
+```
+
+## Installation
+
+### Using lazy.nvim
+
+```lua
+{
+  "scossar/converse.nvim",
+  dependencies = {},
+  config = function()
+    require("converse").setup({
+      -- configuration options (see below)
+    })
+  end
+}
+```
+## Configuration
+
+### Default Configuration
+
+```lua
+require("converse").setup({
+  -- API related settings
+  api = {
+    model = "claude-3-5-sonnet-20241022",  -- The Claude model to use
+    max_tokens = 8192,                      -- Maximum tokens in the response
+    temperature = 0.7,                      -- Response temperature (0-1)
+    system = "",                           -- System prompt (if needed)
+    conv_dir = "~/.local/share/converse/conversations"  -- Where conversation histories are stored
+  },
+
+  -- Keymapping for sending text to Claude
+  mappings = {
+    send_selection = "<leader>z",  -- Map for sending selected text
+  }
+})
+```
+### API Options
+
+- `model`: the Claude model to use. Currently defaults to Claude 3.5 Sonnet.
+- `max_tokens`: maximum number of tokens in Claude's response.
+- `temperature`: controls response randomness (0 = more deterministic, 1 = more creative).
+- `system`: optional system prompt to set context for Claude.
+- `conv_dir`: directory where conversation JSON files are stored.
+
+### Keymappings
+
+- `ConverseSendSelection` (mapped by default to <leader>z (for some reason))
+
+You can change this by modifying the `mappings.send_selection` option:
+
+```lua
+require("converse").setup({
+  mappings = {
+    send_selection = "<your-preferred-mapping>",
+  }
+})
+```
+
+## Usage
+
+1. open or create a markdown file
+2. select the text you want to send to Claude (in visual mode)
+3. press `<leader>z` (or your configured mapping)
+4. Claude's response will be appended below your selection
+
+The plugin maintains the conversation context for each markdown file, The conversation history is stored in JSON files in the configured `conv_dir`.
+
+### Commands
+
+- `:ConverseSendSelection` - send the selected text to Claude (can also be triggered with a keybinding)
+- `:ConverseTemp` - adjust Claude's temperature setting (0-1)
+
+## Notes
+
+The plugin is currently only intended to be used with markdown files. That's not enforced, but markdown syntax is inserted with Claude's response.
+
+Each markdown file maps to a JSON file that's saved in the `conv_dir`. The full path to the markdown file is prepended to the file name. For example `~/path/to/my_new_markdown_file.md` is saved to `~/.local/share/converse/conversations/path_to_my_new_markdown_file.json`.
+
+The text you send to Claude, and Claude's responses are saved to the file. For example:
+
+```json
+  {
+    "role": "user",
+    "content": "For these cases, does the term \"evaluation metric\" refer to what is being used to determine if the model is doing well in a specific area? For example, the evaluation metric could be the classification error?"
+  },
+  {
+    "role": "assistant",
+    "content": "Yes, that's correct! An evaluation metric is a specific measure or criterion used to assess how well a model is performing at its intended task. Classification error is indeed one example of an evaluation metric.\n\nHere are some common evaluation metrics..."
+  },
+  {
+    "role": "user",
+    "content": "Can you help me understand the difference between precision and recall in this context?"
+  },
+  {
+    "role": "assistant",
+    "content": "Yes! Precision and Recall are both important metrics in classification problems, but they focus on different aspects of performance. Let me explain with an example..."
+  },
+```
+
+## Todo
+
+- add a command for setting the system prompt from the Neovim command line
+- add an option to make the text that's prepended to Claude's responses configurable
+- allow selected question/response pairs to be copied from a conversation's JSON file to a new conversation
+
+Feel free to report any issues or bugs.
+
+
+
+
