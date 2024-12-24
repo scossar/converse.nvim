@@ -80,7 +80,7 @@ require("converse").setup({
 
 - `ConverseSendSelection` (mapped by default to <leader>z (for some reason))
 
-You can change this by modifying the `mappings.send_selection` option:
+You can change this by configuring the `mappings.send_selection` option:
 
 ```lua
 require("converse").setup({
