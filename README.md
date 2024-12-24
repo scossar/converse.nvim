@@ -4,7 +4,7 @@ A Neovim plugin for chatting with Claude directly from markdown files.
 
 I wrote the plugin to help me use LLMs as a learning tool. Switching contexts between my notes and the web UI felt like a distraction.
 
-The plugin requires Neovim >= `0.9.0`, Python >= `3.7`, and some Python dependencies (probably just `anthropic`).
+The plugin requires Neovim `>= 0.9.0`, Python `>= 3.7`, and some Python dependencies (probably just `anthropic`).
 Here are the imports from `nvim_conversation_manager.py`:
 
 ```python
@@ -137,7 +137,7 @@ The text you send to Claude, and Claude's responses are saved to the file. For e
 - add an option to make the text that's prepended to Claude's responses configurable
 - allow selected question/response pairs to be copied from a conversation's JSON file to a new conversation
 
-Feel free to report any issues or bugs.
+Feel free to report any issues or bugs you run into.
 
 
 
