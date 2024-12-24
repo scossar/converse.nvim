@@ -5,10 +5,8 @@ from anthropic import Anthropic
 
 
 class NvimConversationManager:
-    def __init__(self, conv_dir: Path = Path("/home/scossar/nvim_claude")):
-        self.conv_dir = conv_dir
-        if not self.conv_dir.exists():
-            raise ValueError(f"Conversation directory '{self.conv_dir}' doesn't exist")
+    def __init__(self):
+        self.conv_dir = None
         self.conv_name = None
         self.json_file = None
         self.messages = None
@@ -17,13 +15,20 @@ class NvimConversationManager:
             "model": "claude-3-5-sonnet-20241022",
             "max_tokens": 8192,
             "temperature": 0.7,
-            "system": ""
+            "system": "",
+            "conv_dir": ""
         }
 
     def update_config(self, new_config: dict):
         self.config.update(new_config)
+        if self.config["conv_dir"]:
+            self.conv_dir = Path(self.config["conv_dir"])
+            self.conv_dir.mkdir(parents=True, exist_ok=True)
 
     def set_conversation(self, name: str):
+        if not self.conv_dir:
+            raise ValueError("Conversation directory not set. Please configure conv_dir setting.")
+
         self.conv_name = name
         self.json_file = self.conv_dir / f"{name}.json"
 

@@ -9,7 +9,13 @@ end
 
 M.config = {
   -- API related settings
-  api = { model = "claude-3-5-sonnet-20241022", max_tokens = 8192, temperature = 0.7, system = "" },
+  api = {
+    model = "claude-3-5-sonnet-20241022",
+    max_tokens = 8192,
+    temperature = 0.7,
+    system = "",
+    conv_dir = vim.fn.expand("~/.local/share/converse/conversations"),
+  },
 
   -- plugin specific settings
   mappings = {
@@ -144,11 +150,18 @@ end
 function M.setup(opts)
   M.config = vim.tbl_extend("force", M.config, opts or {})
 
+  vim.api.nvim_create_user_command("ConverseSendSelection", function()
+    M.send_selection()
+  end, {
+    range = true,
+    desc = "Send selection to Claude",
+  })
+
   if M.config.mappings.send_selection then
     vim.keymap.set(
       "v",
       M.config.mappings.send_selection,
-      ":ClaudeChatSendSelection<CR>",
+      ":ConverseSendSelection<CR>",
       { desc = "[A]sk Claude", noremap = true, silent = true }
     )
   end
