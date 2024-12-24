@@ -36,17 +36,27 @@ end
 
 local job = nil
 
-local function create_job()
+local function create_job(on_response)
   local job_id = vim.fn.jobstart({ "python", python_script_path }, {
     on_exit = function(_, exit_code)
       job = nil -- clear job reference when process exits
       if exit_code ~= 0 then
         vim.notify("Python process exited with code: " .. exit_code, vim.log.levels.ERROR)
       end
+      if on_response then
+        vim.schedule(function()
+          on_response()
+        end)
+      end
     end,
 
     on_stdout = function(_, data)
       if data and data[1] and data[1] ~= "" then
+        if on_response then
+          vim.schedule(function()
+            on_response()
+          end)
+        end
         local ok, decoded = pcall(vim.fn.json_decode, data[1])
 
         if not ok then
@@ -96,6 +106,11 @@ local function create_job()
       if data and data[1] and data[1] ~= "" then
         print("Error:", data[1])
       end
+      if on_response then
+        vim.schedule(function()
+          on_response()
+        end)
+      end
     end,
   })
 
@@ -127,12 +142,10 @@ function M.send_selection()
     vim.api.nvim_buf_add_highlight(bufnr, highlight_ns, "ConverseSent", i - 1, 0, -1)
   end
 
-  vim.defer_fn(function()
-    vim.api.nvim_buf_clear_namespace(bufnr, highlight_ns, 0, -1)
-  end, 500)
-
   if not job or vim.fn.jobwait({ job }, 0)[1] == -1 then
-    job = create_job()
+    job = create_job(function()
+      vim.api.nvim_buf_clear_namespace(bufnr, highlight_ns, 0, -1)
+    end)
     if not job then
       return
     end
@@ -160,6 +173,9 @@ function M.send_selection()
   vim.notify("Sending request to Claude...", vim.log.levels.INFO)
 
   send_to_python(job, json)
+
+  -- move the cursor to the end of the selection
+  vim.api.nvim_win_set_cursor(0, { end_pos, 0 })
 end
 
 function M.update_config(new_config)
@@ -173,14 +189,13 @@ function M.setup(opts)
   M.config = vim.tbl_extend("force", M.config, opts or {})
 
   -- get colors from the color scheme to highlight the selected text
-  local visual_hl = vim.api.nvim_get_hl(0, { name = "Visual" })
+  local visual_hl = vim.api.nvim_get_hl(0, { name = "Search" })
   local bg_color = visual_hl.bg
 
   if bg_color then
-    -- local bg_hex = string.format("#%06x", bg_color)
+    local bg_hex = string.format("#%06x", bg_color)
     -- the above returns "#45475a", which is very close to the window bg color
     -- let's try a different color
-    local bg_hex = "#02119d"
     vim.api.nvim_set_hl(0, "ConverseSent", {
       bg = bg_hex,
       blend = 20,
