@@ -154,12 +154,17 @@ function M.setup(opts)
   end
 
   vim.api.nvim_create_user_command("ClaudeTemp", function(args)
-    local temp = tonumber(args.args)
+    -- trim whitespace and convert commas to decimal points
+    local cleaned_input = args.args:match("^%s*(.-)%s*$"):gsub(",", ".")
+    local temp = tonumber(cleaned_input)
     if temp and temp >= 0 and temp <= 1 then
       M.update_config({ temperature = temp })
-      vim.notify(string.format("Claude temperature set to %.1f", temp))
+      vim.notify(string.format("Claude temperature set to %.2f", temp))
     else
-      vim.notify("Temperature must be between 0 and 1", vim.log.levels.Error)
+      vim.notify(
+        string.format("Invalid temperature value: '%s'. Must be between 0 and 1", args.args),
+        vim.log.levels.Error
+      )
     end
   end, {
     nargs = 1,
