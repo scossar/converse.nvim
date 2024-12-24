@@ -106,6 +106,15 @@ local function create_job()
   return job_id
 end
 
+local function path_to_conversation_name(buffer_path)
+  -- First expand the full path to handle ~
+  local full_path = vim.fn.expand(buffer_path)
+  -- Then get the path relative to home
+  local home_relative = vim.fn.fnamemodify(full_path, ":~")
+  -- Replace both ~ and / with _ and remove any leading _ characters
+  return home_relative:gsub("[~/]", "_"):gsub("^_+", "")
+end
+
 function M.send_selection()
   local bufnr = vim.api.nvim_get_current_buf()
   local start_pos = vim.fn.getpos("'<")[2]
@@ -119,6 +128,7 @@ function M.send_selection()
 
   local lines = vim.fn.getline(start_pos, end_pos)
   local buffer_path = vim.api.nvim_buf_get_name(0)
+  local conversation_name = path_to_conversation_name(buffer_path)
 
   local text
   if type(lines) == "table" then
@@ -128,7 +138,7 @@ function M.send_selection()
   end
 
   local data = {
-    filename = buffer_path,
+    filename = conversation_name,
     bufnr = bufnr,
     end_pos = end_pos,
     content = text,
