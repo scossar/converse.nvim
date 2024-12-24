@@ -39,14 +39,14 @@ local job = nil
 local function create_job(on_response)
   local job_id = vim.fn.jobstart({ "python", python_script_path }, {
     on_exit = function(_, exit_code)
-      job = nil -- clear job reference when process exits
-      if exit_code ~= 0 then
-        vim.notify("Python process exited with code: " .. exit_code, vim.log.levels.ERROR)
-      end
       if on_response then
         vim.schedule(function()
           on_response()
         end)
+      end
+      job = nil -- clear job reference when process exits
+      if exit_code ~= 0 then
+        vim.notify("Python process exited with code: " .. exit_code, vim.log.levels.ERROR)
       end
     end,
 
@@ -103,13 +103,13 @@ local function create_job(on_response)
     end,
 
     on_stderr = function(_, data)
-      if data and data[1] and data[1] ~= "" then
-        print("Error:", data[1])
-      end
       if on_response then
         vim.schedule(function()
           on_response()
         end)
+      end
+      if data and data[1] and data[1] ~= "" then
+        print("Error:", data[1])
       end
     end,
   })
@@ -142,9 +142,15 @@ function M.send_selection()
     vim.api.nvim_buf_add_highlight(bufnr, highlight_ns, "ConverseSent", i - 1, 0, -1)
   end
 
+  -- store the notification handle so it can be updated in the job callback
+  local notify_handle = vim.notify("Sending request to Claude...", vim.log.levels.INFO)
+
   if not job or vim.fn.jobwait({ job }, 0)[1] == -1 then
     job = create_job(function()
       vim.api.nvim_buf_clear_namespace(bufnr, highlight_ns, 0, -1)
+      vim.notify("Response received from Claude", vim.log.levels.INFO, {
+        replace = notify_handle,
+      })
     end)
     if not job then
       return
@@ -169,8 +175,6 @@ function M.send_selection()
     content = text,
   }
   local json = vim.fn.json_encode(data)
-
-  vim.notify("Sending request to Claude...", vim.log.levels.INFO)
 
   send_to_python(job, json)
 
