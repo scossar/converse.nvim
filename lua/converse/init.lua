@@ -198,8 +198,6 @@ function M.setup(opts)
 
   if bg_color then
     local bg_hex = string.format("#%06x", bg_color)
-    -- the above returns "#45475a", which is very close to the window bg color
-    -- let's try a different color
     vim.api.nvim_set_hl(0, "ConverseSent", {
       bg = bg_hex,
       blend = 20,
