@@ -1,4 +1,4 @@
-# Claudechat
+# Converse.nvim
 
 A Neovim plugin for chatting with Claude directly from markdown files.
 
