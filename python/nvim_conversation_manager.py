@@ -13,6 +13,15 @@ class NvimConversationManager:
         self.json_file = None
         self.messages = None
         self.client = Anthropic()
+        self.config = {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 8192,
+            "temperature": 0.7,
+            "system": ""
+        }
+
+    def update_config(self, new_config: dict):
+        self.config.update(new_config)
 
     def set_conversation(self, name: str):
         self.conv_name = name
@@ -37,11 +46,15 @@ class NvimConversationManager:
         message["content"] = content
         self.messages.append(message)
 
-    def send_messages(self) -> str:
+    def send_messages(self, **kwargs) -> str:
+        # merge instance config with any provided overrides
+        config = {**self.config, **kwargs}
+
         response = self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=8192,
-            temperature=0.7,
+            model=config["model"],
+            max_tokens=config["max_tokens"],
+            temperature=config["temperature"],
+            system=config["system"],
             messages=self.messages
         )
 
@@ -53,6 +66,7 @@ class NvimConversationManager:
 
 def main():
     ncm = NvimConversationManager()
+
     while True:
         try:
             line = sys.stdin.readline()
@@ -60,6 +74,11 @@ def main():
                 break
 
             data = json.loads(line)
+
+            if data.get("type") == "config":
+                ncm.update_config(data["config"])
+                continue
+
             filename = data["filename"]
             conversation_name = Path(filename).stem
             content = data["content"]

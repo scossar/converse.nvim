@@ -23,8 +23,17 @@ local function send_config(job_id)
   send_to_python(job_id, vim.fn.json_encode(config_data))
 end
 
+local job = nil
+
 local function create_job()
-  return vim.fn.jobstart({ "python", python_script_path }, {
+  local job_id = vim.fn.jobstart({ "python", python_script_path }, {
+    on_exit = function(_, exit_code)
+      job = nil -- clear job reference when process exits
+      if exit_code ~= 0 then
+        vim.notify("Python process exited with code: " .. exit_code, vim.log.levels.ERROR)
+      end
+    end,
+
     on_stdout = function(_, data)
       if data and data[1] and data[1] ~= "" then
         local ok, decoded = pcall(vim.fn.json_decode, data[1])
@@ -71,22 +80,32 @@ local function create_job()
         end
       end
     end,
+
     on_stderr = function(_, data)
       if data and data[1] and data[1] ~= "" then
         print("Error:", data[1])
       end
     end,
   })
-end
 
-local job = nil
+  if job_id <= 0 then
+    vim.notify("Failed to start Python process", vim.log.levels.ERROR)
+    return nil
+  end
+
+  send_config(job_id)
+  return job_id
+end
 
 function M.send_selection()
   local bufnr = vim.api.nvim_get_current_buf()
   local start_pos = vim.fn.getpos("'<")[2]
   local end_pos = vim.fn.getpos("'>")[2]
-  if not job then
+  if not job or vim.fn.jobwait({ job }, 0)[1] == -1 then
     job = create_job()
+    if not job then
+      return
+    end
   end
 
   local lines = vim.fn.getline(start_pos, end_pos)
@@ -110,6 +129,13 @@ function M.send_selection()
   vim.notify("Sending request to Claude...", vim.log.levels.INFO)
 
   send_to_python(job, json)
+end
+
+function M.update_config(new_config)
+  M.config = vim.tbl_extend("force", M.config, new_config)
+  if job then
+    send_config(job)
+  end
 end
 
 return M
