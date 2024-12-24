@@ -3,6 +3,8 @@ local M = {}
 local plugin_path = debug.getinfo(1).source:sub(2):match("(.*)/lua/")
 local python_script_path = plugin_path .. "/python/nvim_conversation_manager.py"
 
+local highlight_ns = vim.api.nvim_create_namespace("converse_highlight")
+
 local function send_to_python(job_id, message)
   vim.fn.chansend(job_id, message .. "\n")
 end
@@ -119,6 +121,16 @@ function M.send_selection()
   local bufnr = vim.api.nvim_get_current_buf()
   local start_pos = vim.fn.getpos("'<")[2]
   local end_pos = vim.fn.getpos("'>")[2]
+
+  -- add highlight to the selected region
+  for i = start_pos, end_pos do
+    vim.api.nvim_buf_add_highlight(bufnr, highlight_ns, "ConverseSent", i - 1, 0, -1)
+  end
+
+  vim.defer_fn(function()
+    vim.api.nvim_buf_clear_namespace(bufnr, highlight_ns, 0, -1)
+  end, 500)
+
   if not job or vim.fn.jobwait({ job }, 0)[1] == -1 then
     job = create_job()
     if not job then
@@ -159,6 +171,23 @@ end
 
 function M.setup(opts)
   M.config = vim.tbl_extend("force", M.config, opts or {})
+
+  -- get colors from the color scheme to highlight the selected text
+  local visual_hl = vim.api.nvim_get_hl(0, { name = "Visual" })
+  local bg_color = visual_hl.bg
+
+  if bg_color then
+    -- local bg_hex = string.format("#%06x", bg_color)
+    -- the above returns "#45475a", which is very close to the window bg color
+    -- let's try a different color
+    local bg_hex = "#02119d"
+    vim.api.nvim_set_hl(0, "ConverseSent", {
+      bg = bg_hex,
+      blend = 20,
+    })
+  else
+    vim.api.nvim_set_hl(0, "ConverseSent", { bg = "#3a405a", blend = 20 })
+  end
 
   vim.api.nvim_create_user_command("ConverseSendSelection", function()
     M.send_selection()
