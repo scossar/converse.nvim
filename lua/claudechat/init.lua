@@ -8,16 +8,19 @@ local function send_to_python(job_id, message)
 end
 
 M.config = {
-  model = "claude-3-5-sonnet-20241022",
-  max_tokens = 8192,
-  temperature = 0.7,
-  system = "",
+  -- API related settings
+  api = { model = "claude-3-5-sonnet-20241022", max_tokens = 8192, temperature = 0.7, system = "" },
+
+  -- plugin specific settings
+  mappings = {
+    send_selection = "<leader>z",
+  },
 }
 
 local function send_config(job_id)
   local config_data = {
     type = "config",
-    config = M.config,
+    config = M.config.api,
   }
 
   send_to_python(job_id, vim.fn.json_encode(config_data))
@@ -132,10 +135,39 @@ function M.send_selection()
 end
 
 function M.update_config(new_config)
-  M.config = vim.tbl_extend("force", M.config, new_config)
+  M.config.api = vim.tbl_extend("force", M.config.api, new_config)
   if job then
     send_config(job)
   end
+end
+
+function M.setup(opts)
+  M.config = vim.tbl_extend("force", M.config, opts or {})
+
+  if M.config.mappings.send_selection then
+    vim.keymap.set(
+      "v",
+      M.config.mappings.send_selection,
+      ":ClaudeChatSendSelection<CR>",
+      { desc = "[A]sk Claude", noremap = true, silent = true }
+    )
+  end
+
+  vim.api.nvim_create_user_command("ClaudeTemp", function(args)
+    local temp = tonumber(args.args)
+    if temp and temp >= 0 and temp <= 1 then
+      M.update_config({ temperature = temp })
+      vim.notify(string.format("Claude temperature set to %.1f", temp))
+    else
+      vim.notify("Temperature must be between 0 and 1", vim.log.levels.Error)
+    end
+  end, {
+    nargs = 1,
+    desc = "Set Claude temperature (0-1)",
+    complete = function()
+      return { "0", "0.3", "0.5", "0.7", "1" }
+    end,
+  })
 end
 
 return M
