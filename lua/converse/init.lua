@@ -242,6 +242,15 @@ function M.setup(opts)
       return { "0", "0.3", "0.5", "0.7", "1" }
     end,
   })
+
+  vim.api.nvim_create_user_command("ConverseSystem", function(args)
+    local system_prompt = args.args
+    M.update_config({ system = system_prompt })
+    vim.notify(string.format("Claude system prompt set to '%s'", system_prompt))
+  end, {
+    nargs = 1,
+    desc = "Set Claude system prompt",
+  })
 end
 
 return M

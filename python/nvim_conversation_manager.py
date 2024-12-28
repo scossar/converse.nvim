@@ -1,11 +1,19 @@
 import sys
 import json
+import logging
 from pathlib import Path
 from anthropic import Anthropic
+
+logging.basicConfig(
+    filename="converse.log",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 class NvimConversationManager:
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.conv_dir = None
         self.conv_name = None
         self.json_file = None
@@ -20,7 +28,9 @@ class NvimConversationManager:
         }
 
     def update_config(self, new_config: dict):
+        self.logger.debug(f"Updating config with: {new_config}")
         self.config.update(new_config)
+        self.logger.debug(f"New config state: {self.config}")
         if self.config["conv_dir"]:
             self.conv_dir = Path(self.config["conv_dir"])
             self.conv_dir.mkdir(parents=True, exist_ok=True)
@@ -54,6 +64,7 @@ class NvimConversationManager:
     def send_messages(self, **kwargs) -> str:
         # merge instance config with any provided overrides
         config = {**self.config, **kwargs}
+        self.logger.debug(f"Sending message with config: {config}")
 
         response = self.client.messages.create(
             model=config["model"],
