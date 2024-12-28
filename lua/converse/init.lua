@@ -19,6 +19,12 @@ M.config = {
     conv_dir = vim.fn.expand("~/.local/share/converse/conversations"),
   },
 
+  logging = {
+    enabled = true,
+    level = "INFO",
+    dir = vim.fn.stdpath("data") .. "/converse/logs",
+  },
+
   -- plugin specific settings
   mappings = {
     send_selection = "<leader>z",
@@ -28,7 +34,8 @@ M.config = {
 local function send_config(job_id)
   local config_data = {
     type = "config",
-    config = M.config.api,
+    api = M.config.api,
+    logging = M.config.logging,
   }
 
   send_to_python(job_id, vim.fn.json_encode(config_data))

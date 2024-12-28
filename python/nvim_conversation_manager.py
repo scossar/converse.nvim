@@ -4,33 +4,58 @@ import logging
 from pathlib import Path
 from anthropic import Anthropic
 
-logging.basicConfig(
-    filename="converse.log",
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# logging.basicConfig(
+#     filename="converse.log",
+#     level=logging.DEBUG,
+#     format="%(asctime)s - %(levelname)s - %(message)s"
+# )
 
 
 class NvimConversationManager:
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        # self.logger = logging.getLogger(__name__)
+        self.logger = None
         self.conv_dir = None
         self.conv_name = None
         self.json_file = None
         self.messages = None
         self.client = Anthropic()
         self.config = {
-            "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 8192,
-            "temperature": 0.7,
-            "system": "",
-            "conv_dir": ""
+            "api": {
+                "model": "claude-3-5-sonnet-20241022",
+                "max_tokens": 8192,
+                "temperature": 0.7,
+                "system": "",
+                "conv_dir": ""
+            },
+            "logging": {}
         }
 
+    def setup_logging(self):
+        # TODO: handle the "enabled" option
+        log_level = getattr(logging, self.config.get("logging", {}).get("level", "INFO"))
+        log_dir = Path(self.config.get("logging", {}).get("dir", ""))
+
+        if log_dir:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "converse.log"
+
+            logging.basicConfig(
+                filename=str(log_file),
+                level=log_level,  # do I need to be setting the level here?
+                format="%(asctime)s - %(levelname)s - %(message)s"
+            )
+            self.logger = logging.getLogger((__name__))
+            self.logger.debug("Logging initialized")
+
     def update_config(self, new_config: dict):
-        self.logger.debug(f"Updating config with: {new_config}")
+        # self.logger.debug(f"Updating config with: {new_config}")
         self.config.update(new_config)
-        self.logger.debug(f"New config state: {self.config}")
+        # self.logger.debug(f"New config state: {self.config}")
+        if "logging" in new_config:
+            self.setup_logging()
+        if self.logger:
+            self.logger.debug(f"New config state: {self.config}")
         if self.config["conv_dir"]:
             self.conv_dir = Path(self.config["conv_dir"])
             self.conv_dir.mkdir(parents=True, exist_ok=True)
@@ -64,13 +89,15 @@ class NvimConversationManager:
     def send_messages(self, **kwargs) -> str:
         # merge instance config with any provided overrides
         config = {**self.config, **kwargs}
-        self.logger.debug(f"Sending message with config: {config}")
+        api_config = config.get("api")
+        if self.logger:
+            self.logger.info(f"Sending message with config: {config}")
 
         response = self.client.messages.create(
-            model=config["model"],
-            max_tokens=config["max_tokens"],
-            temperature=config["temperature"],
-            system=config["system"],
+            model=api_config["model"],
+            max_tokens=api_config["max_tokens"],
+            temperature=api_config["temperature"],
+            system=api_config["system"],
             messages=self.messages
         )
 
