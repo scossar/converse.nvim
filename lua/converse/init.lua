@@ -183,6 +183,7 @@ function M.send_selection()
     end_pos = end_pos,
     content = text,
   }
+  -- TODO: use pcall(vim.fn.json_encode(data))
   local json = vim.fn.json_encode(data)
 
   send_to_python(job, json)

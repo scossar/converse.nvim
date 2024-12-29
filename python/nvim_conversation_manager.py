@@ -1,14 +1,9 @@
 import sys
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from anthropic import Anthropic
-
-# logging.basicConfig(
-#     filename="converse.log",
-#     level=logging.DEBUG,
-#     format="%(asctime)s - %(levelname)s - %(message)s"
-# )
 
 
 class NvimConversationManager:
@@ -33,9 +28,9 @@ class NvimConversationManager:
 
         self.logging_enabled = logging_config["enabled"]
         self.logger = logging.getLogger(__name__)
+        self.logger.handlers.clear()  # clear any existing handlers
 
         if not self.logging_enabled:
-            self.logger.handlers.clear()
             self.logger.addHandler(logging.NullHandler())
             return
 
@@ -53,29 +48,21 @@ class NvimConversationManager:
         except (PermissionError, OSError) as e:
             raise ValueError(f"Cannot write to log file {log_file}: {str(e)}")
 
-        logging.basicConfig(
+        handler = RotatingFileHandler(
             filename=str(log_file),
-            level=log_level,
-            format="%(asctime)s - %(levelname)s - %(message)s"
+            maxBytes=1024 * 1024,
+            backupCount=5,
+            encoding="utf-8"
         )
-        self.logger.info(f"Logging initialized with: {logging_config}")
 
-    # def setup_logging(self):
-    #     logging_config = self.config["logging"]
-    #     log_level = logging_config["level"]
-    #     log_dir = Path(logging_config["dir"])
-    #     self.logging_enabled = logging_config["enabled"]
-    #
-    #     log_dir.mkdir(parents=True, exist_ok=True)
-    #     log_file = log_dir / "converse.log"
-    #
-    #     logging.basicConfig(
-    #         filename=str(log_file),
-    #         level=log_level,
-    #         format="%(asctime)s - %(levelname)s - %(message)s"
-    #     )
-    #     self.logger = logging.getLogger(__name__)
-    #     self.logger.info(f"Logging initialized with: {logging_config}")
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        handler.setLevel(log_level)
+
+        self.logger.addHandler(handler)
+        self.logger.setLevel(log_level)
+
+        self.logger.info(f"Logging initialized with: {logging_config}")
 
     def update_config(self, new_config: dict):
         if not all(key in new_config for key in ["api", "logging"]):
@@ -126,9 +113,6 @@ class NvimConversationManager:
             raise ValueError(f"Failed to create conversation directory: {self.conv_dir} - {str(e)}")
 
     def set_conversation(self, name: str):
-        if not self.conv_dir:
-            raise ValueError("Conversation directory not set. Please configure conv_dir setting.")
-
         self.conv_name = name
         self.json_file = self.conv_dir / f"{name}.json"
 
@@ -142,8 +126,17 @@ class NvimConversationManager:
         self.messages = messages
 
     def save_conversation(self, messages: list):
-        with open(self.json_file, "w") as f:
-            json.dump(messages, f, indent=2)
+        try:
+            with open(self.json_file, "w", encoding='utf-8') as f:
+                json.dump(messages, f, indent=2)
+        except IOError as e:
+            self.logger.error(f"Failed to write conversation to {self.json_file}: {str(e)}")
+            raise ValueError(f"Failed to save conversation: {str(e)}")
+        except json.JSONEncodeError as e:
+            self.logger.error(f"Failed to serialize conversation data: {str(e)}")
+            raise ValueError(f"Failed to encode conversation data: {str(e)}")
+
+        self.logger.debug(f"Saved conversation to {self.json_file}")
 
     def append_message(self, role: str, content: str):
         message = {}
@@ -151,25 +144,45 @@ class NvimConversationManager:
         message["content"] = content
         self.messages.append(message)
 
-    def send_messages(self, **kwargs) -> str:
-        # merge instance config with any provided overrides
-        config = {**self.config, **kwargs}
-        # TODO: handle the case of api not being set
-        api_config = config.get("api")
-        self.logger.info(f"Sending message with config: {config}")
+    def send_messages(self) -> str:
+        try:
+            api_config = self.config.get("api")
+            if not api_config:
+                raise ValueError("API configuration is missing")
 
-        response = self.client.messages.create(
-            model=api_config["model"],
-            max_tokens=api_config["max_tokens"],
-            temperature=api_config["temperature"],
-            system=api_config["system"],
-            messages=self.messages
-        )
+            self.logger.info(f"Sending message with config: {api_config}")
 
-        content = response.content[0].text
-        self.append_message("assistant", content)
-        self.save_conversation(self.messages)
-        return content
+            try:
+                response = self.client.messages.create(
+                    model=api_config["model"],
+                    max_tokens=api_config["max_tokens"],
+                    temperature=api_config["temperature"],
+                    system=api_config["system"],
+                    messages=self.messages
+                )
+            except Exception as e:
+                self.logger.error(f"API call failed: {str(e)}")
+                raise ValueError(f"Failed to get response from Anthropic API: {str(e)}")
+
+            if not response or not response.content:
+                self.logger.error("Received empty response from API")
+                raise ValueError("Received empty response from API")
+
+            try:
+                content = response.content[0].text
+            except (IndexError, AttributeError) as e:
+                self.logger.error(f"Failed to extract content from response: {str(e)}")
+                raise ValueError(f"Unexpected response format: {str(e)}")
+
+            self.append_message("assistant", content)
+            self.save_conversation(self.messages)
+
+            self.logger.debug("Successfully received and saved response")
+            return content
+
+        except Exception as e:
+            self.logger.error(f"Error in send_messages: {str(e)}")
+            raise
 
 
 def main():
@@ -177,37 +190,99 @@ def main():
 
     while True:
         try:
-            line = sys.stdin.readline()
+            try:
+                line = sys.stdin.readline()
+            except IOError as e:
+                raise ValueError(f"Failed to read from stdin: {str(e)}")
+
             if not line:
                 break
 
-            data = json.loads(line)
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON received: {str(e)}")
 
             if data.get("type") == "config":
+                if "config" not in data:
+                    raise ValueError("Config message missing 'config' field")
                 ncm.update_config(data["config"])
                 continue
 
-            filename = data["filename"]
-            conversation_name = Path(filename).stem
-            content = data["content"]
-            bufnr = data["bufnr"]
-            end_pos = data["end_pos"]
+            # Validate required fields
+            required_fields = ["filename", "content", "bufnr", "end_pos"]
+            missing_fields = [field for field in required_fields if field not in data]
+            if missing_fields:
+                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+
+            try:
+                conversation_name = Path(data["filename"]).stem
+            except Exception as e:
+                raise ValueError(f"Invalid filename: {str(e)}")
 
             ncm.load_conversation(conversation_name)
-            ncm.append_message("user", content)
+            ncm.append_message("user", data["content"])
             response = ncm.send_messages()
-            print(json.dumps({
-                "response": response,
-                "bufnr": bufnr,
-                "end_pos": end_pos
-            }), flush=True)
+
+            try:
+                print(json.dumps({
+                    "response": response,
+                    "bufnr": data["bufnr"],
+                    "end_pos": data["end_pos"]
+                }), flush=True)
+            except (IOError, json.JSONEncodeError) as e:
+                raise ValueError(f"Failed to send response: {str(e)}")
 
         except Exception as e:
-            print(json.dumps({
-                "error": str(e)
-            }), file=sys.stderr, flush=True)
+            try:
+                print(json.dumps({
+                    "error": str(e)
+                }), file=sys.stderr, flush=True)
+            except Exception as e:
+                # If we can't even send the error, log it if possible
+                # and exit the process
+                sys.exit(f"Critical error: {str(e)}")
 
 
 if __name__ == "__main__":
     main()
 
+# def main():
+#     ncm = NvimConversationManager()
+#
+#     while True:
+#         try:
+#             line = sys.stdin.readline()
+#             if not line:
+#                 break
+#
+#             data = json.loads(line)
+#
+#             if data.get("type") == "config":
+#                 ncm.update_config(data["config"])
+#                 continue
+#
+#             filename = data["filename"]
+#             conversation_name = Path(filename).stem
+#             content = data["content"]
+#             bufnr = data["bufnr"]
+#             end_pos = data["end_pos"]
+#
+#             ncm.load_conversation(conversation_name)
+#             ncm.append_message("user", content)
+#             response = ncm.send_messages()
+#             print(json.dumps({
+#                 "response": response,
+#                 "bufnr": bufnr,
+#                 "end_pos": end_pos
+#             }), flush=True)
+#
+#         except Exception as e:
+#             print(json.dumps({
+#                 "error": str(e)
+#             }), file=sys.stderr, flush=True)
+#
+#
+# if __name__ == "__main__":
+#     main()
+#
