@@ -33,7 +33,7 @@ class NvimConversationManager:
 
     def setup_logging(self):
         # TODO: handle the "enabled" option
-        log_level = getattr(logging, self.config.get("logging", {}).get("level", "INFO"))
+        log_level = self.config.get("logging", {}).get("level", "INFO")
         log_dir = Path(self.config.get("logging", {}).get("dir", ""))
 
         if log_dir:
@@ -56,8 +56,8 @@ class NvimConversationManager:
             self.setup_logging()
         if self.logger:
             self.logger.debug(f"New config state: {self.config}")
-        if self.config["conv_dir"]:
-            self.conv_dir = Path(self.config["conv_dir"])
+        if self.config["api"]["conv_dir"]:
+            self.conv_dir = Path(self.config["api"]["conv_dir"])
             self.conv_dir.mkdir(parents=True, exist_ok=True)
 
     def set_conversation(self, name: str):
@@ -89,6 +89,7 @@ class NvimConversationManager:
     def send_messages(self, **kwargs) -> str:
         # merge instance config with any provided overrides
         config = {**self.config, **kwargs}
+        # TODO: handle the case of api not being set
         api_config = config.get("api")
         if self.logger:
             self.logger.info(f"Sending message with config: {config}")

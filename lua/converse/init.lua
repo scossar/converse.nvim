@@ -34,8 +34,10 @@ M.config = {
 local function send_config(job_id)
   local config_data = {
     type = "config",
-    api = M.config.api,
-    logging = M.config.logging,
+    config = {
+      api = M.config.api,
+      logging = M.config.logging,
+    },
   }
 
   send_to_python(job_id, vim.fn.json_encode(config_data))
