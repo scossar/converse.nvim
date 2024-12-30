@@ -40,7 +40,14 @@ local function send_config(job_id)
     },
   }
 
-  send_to_python(job_id, vim.fn.json_encode(config_data))
+  local ok, encoded = pcall(vim.fn.json_encode, config_data)
+
+  if not ok then
+    vim.notify("Failed to encode JSON:" .. encoded, vim.log.levels.ERROR)
+    return
+  end
+
+  send_to_python(job_id, encoded)
 end
 
 local job = nil
