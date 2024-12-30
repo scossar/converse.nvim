@@ -6,7 +6,7 @@ local python_script_path = plugin_path .. "/python/nvim_conversation_manager.py"
 local highlight_ns = vim.api.nvim_create_namespace("converse_highlight")
 
 local function send_to_python(job_id, message)
-  if not vim.fn.jobwait({ job_id }, 0)[1] == -1 then
+  if vim.fn.jobwait({ job_id }, 0)[1] ~= -1 then
     error("Invalid or terminated job_id")
   end
 
