@@ -4,7 +4,8 @@ A Neovim plugin for chatting with Claude directly from markdown files.
 
 I wrote the plugin to help me use LLMs as a learning tool. Switching contexts between my notes and the web UI felt like a distraction.
 
-The plugin requires Neovim `>= 0.9.0`, Python `>= 3.7`, and the [Anthropic Python API library](https://github.com/anthropics/anthropic-sdk-python)
+The plugin requires Neovim `>= 0.9.0`, Python `>= 3.7`, and the [Anthropic Python API library](https://github.com/anthropics/anthropic-sdk-python).
+
 The easiest way I know of for dealing with Python dependencies is to use [`pip`](https://pip.pypa.io/en/stable/getting-started/):
 
 ```bash
