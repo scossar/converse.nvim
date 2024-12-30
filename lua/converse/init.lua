@@ -224,6 +224,14 @@ function M.send_selection()
   vim.api.nvim_win_set_cursor(0, { end_pos, 0 })
 end
 
+-- safely terminate the job
+function M.cleanup()
+  if job then
+    vim.fn.jobstop(job)
+    job = nil
+  end
+end
+
 function M.update_config(new_config)
   M.config.api = vim.tbl_extend("force", M.config.api, new_config)
   if job then
@@ -233,6 +241,13 @@ end
 
 function M.setup(opts)
   M.config = vim.tbl_extend("force", M.config, opts or {})
+
+  -- Register cleanup hook
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    callback = M.cleanup,
+    group = vim.api.nvim_create_augroup("ConverseCleaup", { clear = true }),
+    desc = "Cleanup Converse plugin resources",
+  })
 
   -- get colors from the color scheme to highlight the selected text
   local visual_hl = vim.api.nvim_get_hl(0, { name = "Search" })
