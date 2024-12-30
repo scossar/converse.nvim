@@ -4,15 +4,7 @@ A Neovim plugin for chatting with Claude directly from markdown files.
 
 I wrote the plugin to help me use LLMs as a learning tool. Switching contexts between my notes and the web UI felt like a distraction.
 
-The plugin requires Neovim `>= 0.9.0`, Python `>= 3.7`, and some Python dependencies (probably just `anthropic`).
-Here are the imports from `nvim_conversation_manager.py`:
-
-```python
-import sys
-import json
-from pathlib import Path
-from anthropic import Anthropic
-```
+The plugin requires Neovim `>= 0.9.0`, Python `>= 3.7`, and the [Anthropic Python API library](https://github.com/anthropics/anthropic-sdk-python)
 The easiest way I know of for dealing with Python dependencies is to use [`pip`](https://pip.pypa.io/en/stable/getting-started/):
 
 ```bash
@@ -62,13 +54,19 @@ require("converse").setup({
     conv_dir = "~/.local/share/converse/conversations"  -- Where conversation histories are stored
   },
 
+  logging = {
+    enabled = true,
+    level = "INFO",
+    dir = vim.fn.stdpath("data") .. "/converse/logs",  -- usually `~/.local/share/nvim/converse/logs` on Linux
+  },
+
   -- Keymapping for sending text to Claude
   mappings = {
     send_selection = "<leader>z",  -- Map for sending selected text
   }
 })
 ```
-### API Options
+### API options
 
 - `model`: the Claude model to use. Currently defaults to Claude 3.5 Sonnet.
 - `max_tokens`: maximum number of tokens in Claude's response.
@@ -76,7 +74,14 @@ require("converse").setup({
 - `system`: optional system prompt to set context for Claude.
 - `conv_dir`: directory where conversation JSON files are stored.
 
-### Keymappings
+### Loggin options
+
+(logs data from the Python process)
+- `enabled`: set to `false` to disable logging
+- `level`: the log level (the default value of `"INFO"` is probably a bit much, will fix soon). Allowed levels are: `"NOTSET"` (log all messages), `"DEBUG"`, `"WARNING"`, `"ERROR"`, `"CRITICAL"`.
+- `dir`: the directory the logs are saved to
+
+### Key mappings
 
 - `ConverseSendSelection` (mapped by default to <leader>z (for some reason))
 
@@ -103,6 +108,7 @@ The plugin maintains the conversation context for each markdown file, The conver
 
 - `:ConverseSendSelection` - send the selected text to Claude (can also be triggered with a keybinding)
 - `:ConverseTemp` - adjust Claude's temperature setting (0-1)
+- `:ConverseSystem` - set the system prompt. It defaults to an empty string, which works well for a lot of uses. You'll notice a difference in tone from what you get from`claude.ai` though.
 
 ## Notes
 
@@ -131,14 +137,12 @@ The text you send to Claude, and Claude's responses are saved to the file. For e
   },
 ```
 
+Log files are rotated when they reach ~1MB (1024 * 1024 bytes). A maximum of 5 log files are kept. Note that you can turn off logging with the `logging.enabled` option. (Without logging, it can be tricky to debug issues on the Python end of things.) 
+
 ## Todo
 
-- add a command for setting the system prompt from the Neovim command line
 - add an option to make the text that's prepended to Claude's responses configurable
 - allow selected question/response pairs to be copied from a conversation's JSON file to a new conversation
 
 Feel free to report any issues or bugs you run into.
-
-
-
 
