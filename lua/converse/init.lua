@@ -16,6 +16,10 @@ local function send_to_python(job_id, message)
   end
 end
 
+local function is_valid_buffer(bufnr)
+  return bufnr and vim.api.nvim_buf_is_valid(bufnr)
+end
+
 M.config = {
   -- API related settings
   api = {
@@ -167,6 +171,11 @@ end
 
 function M.send_selection()
   local bufnr = vim.api.nvim_get_current_buf()
+  -- make sure buffer is valid
+  if not is_valid_buffer(bufnr) then
+    vim.notify("Invalid buffer", vim.log.levels.ERROR)
+  end
+
   local start_pos = vim.fn.getpos("'<")[2]
   local end_pos = vim.fn.getpos("'>")[2]
 
@@ -224,11 +233,29 @@ function M.send_selection()
   vim.api.nvim_win_set_cursor(0, { end_pos, 0 })
 end
 
--- safely terminate the job
+-- terminate the job when exiting Neovim
 function M.cleanup()
   if job then
     vim.fn.jobstop(job)
     job = nil
+  end
+end
+
+local function validate_config(config)
+  local required = {
+    api = { "model", "max_tokens", "temperature", "system", "conv_dir" },
+    logging = { "enabled", "level", "dir" },
+  }
+
+  for section, fields in pairs(required) do
+    if not config[section] then
+      error(string.format("Missing required config section: %s", section))
+    end
+    for _, field in ipairs(fields) do
+      if config[section][field] == nil then
+        error(string.format("Missing required config field: %s.%s", section, field))
+      end
+    end
   end
 end
 
@@ -241,6 +268,7 @@ end
 
 function M.setup(opts)
   M.config = vim.tbl_extend("force", M.config, opts or {})
+  validate_config(M.config)
 
   -- Register cleanup hook
   vim.api.nvim_create_autocmd("VimLeavePre", {
