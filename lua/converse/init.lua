@@ -47,15 +47,15 @@ local function send_config(job_id)
     },
   }
 
-  local ok, encoded = pcall(vim.fn.json_encode, config_data)
+  local encoded_ok, encoded = pcall(vim.fn.json_encode, config_data)
 
-  if not ok then
+  if not encoded_ok then
     vim.notify("Failed to encode JSON:" .. encoded, vim.log.levels.ERROR)
     return false, "JSON encoding failed"
   end
 
-  local success, err = pcall(send_to_python, job_id, encoded)
-  if not success then
+  local send_ok, err = pcall(send_to_python, job_id, encoded)
+  if not send_ok then
     vim.notify(string.format("Failed to send message to Python process: %s", err), vim.log.levels.ERROR)
     return false, "Failed to send configuration"
   end
@@ -68,11 +68,6 @@ local job = nil
 local function create_job(on_response)
   local job_id = vim.fn.jobstart({ "python", python_script_path }, {
     on_exit = function(_, exit_code)
-      if on_response then
-        vim.schedule(function()
-          on_response()
-        end)
-      end
       job = nil -- clear job reference when process exits
       if exit_code ~= 0 then
         vim.notify("Python process exited with code: " .. exit_code, vim.log.levels.ERROR)
@@ -132,11 +127,6 @@ local function create_job(on_response)
     end,
 
     on_stderr = function(_, data)
-      if on_response then
-        vim.schedule(function()
-          on_response()
-        end)
-      end
       -- concatenate the error output
       if data and #data > 0 then
         -- filter out empty lines and concatenate with newlines
@@ -147,6 +137,7 @@ local function create_job(on_response)
         if #error_lines > 0 then
           local error_msg = table.concat(error_lines, "\n")
           vim.notify(string.format("Python error:\n%s", error_msg), vim.log.levels.ERROR)
+          return
         end
       end
     end,
@@ -216,11 +207,15 @@ function M.send_selection()
     end_pos = end_pos,
     content = text,
   }
-  -- TODO: use pcall(vim.fn.json_encode(data))
-  local json = vim.fn.json_encode(data)
 
-  local ok, err = pcall(send_to_python, job, json)
-  if not ok then
+  local encoded_ok, json = pcall(vim.fn.json_encode, data)
+  if not encoded_ok then
+    vim.notify(string.format("Failed to encode JSON: %s", json), vim.log.levels.ERROR)
+    return
+  end
+
+  local send_ok, err = pcall(send_to_python, job, json)
+  if not send_ok then
     vim.notify(string.format("Failed to send message to Python process: %s", err), vim.log.levels.ERROR)
     return
   end
