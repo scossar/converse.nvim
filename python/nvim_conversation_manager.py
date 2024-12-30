@@ -1,6 +1,7 @@
 import sys
 import json
 import logging
+import importlib
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from anthropic import Anthropic
@@ -8,7 +9,6 @@ from anthropic import Anthropic
 
 class NvimConversationManager:
     def __init__(self):
-        # self.logger = logging.getLogger(__name__)
         self.logger = None
         self.conv_dir = None
         self.conv_name = None
@@ -185,104 +185,73 @@ class NvimConversationManager:
             raise
 
 
+def check_dependencies():
+    try:
+        importlib.import_module("anthropic")
+    except ImportError:
+        print("Required package 'anthropic' is not installed", file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
-    ncm = NvimConversationManager()
+    try:
+        check_dependencies()
+        ncm = NvimConversationManager()
 
-    while True:
-        try:
+        while True:
             try:
-                line = sys.stdin.readline()
-            except IOError as e:
-                raise ValueError(f"Failed to read from stdin: {str(e)}")
+                try:
+                    line = sys.stdin.readline()
+                except IOError as e:
+                    raise ValueError(f"Failed to read from stdin: {str(e)}")
 
-            if not line:
-                break
+                if not line:
+                    break
 
-            try:
-                data = json.loads(line)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON received: {str(e)}")
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Invalid JSON received: {str(e)}")
 
-            if data.get("type") == "config":
-                if "config" not in data:
-                    raise ValueError("Config message missing 'config' field")
-                ncm.update_config(data["config"])
-                continue
+                if data.get("type") == "config":
+                    if "config" not in data:
+                        raise ValueError("Config message missing 'config' field")
+                    ncm.update_config(data["config"])
+                    continue
 
-            # Validate required fields
-            required_fields = ["filename", "content", "bufnr", "end_pos"]
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+                # Validate required fields
+                required_fields = ["filename", "content", "bufnr", "end_pos"]
+                missing_fields = [field for field in required_fields if field not in data]
+                if missing_fields:
+                    raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
 
-            try:
-                conversation_name = Path(data["filename"]).stem
+                try:
+                    conversation_name = Path(data["filename"]).stem
+                except Exception as e:
+                    raise ValueError(f"Invalid filename: {str(e)}")
+
+                ncm.load_conversation(conversation_name)
+                ncm.append_message("user", data["content"])
+                response = ncm.send_messages()
+
+                try:
+                    print(json.dumps({
+                        "response": response,
+                        "bufnr": data["bufnr"],
+                        "end_pos": data["end_pos"]
+                    }), flush=True)
+                except (IOError, json.JSONEncodeError) as e:
+                    raise ValueError(f"Failed to send response: {str(e)}")
+
             except Exception as e:
-                raise ValueError(f"Invalid filename: {str(e)}")
-
-            ncm.load_conversation(conversation_name)
-            ncm.append_message("user", data["content"])
-            response = ncm.send_messages()
-
-            try:
-                print(json.dumps({
-                    "response": response,
-                    "bufnr": data["bufnr"],
-                    "end_pos": data["end_pos"]
-                }), flush=True)
-            except (IOError, json.JSONEncodeError) as e:
-                raise ValueError(f"Failed to send response: {str(e)}")
-
-        except Exception as e:
-            try:
                 print(json.dumps({
                     "error": str(e)
                 }), file=sys.stderr, flush=True)
-            except Exception as e:
-                # If we can't even send the error, log it if possible
-                # and exit the process
-                sys.exit(f"Critical error: {str(e)}")
+
+    except Exception as e:
+        sys.stderr.write(f"Critical error: {str(e)}\n")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
-
-# def main():
-#     ncm = NvimConversationManager()
-#
-#     while True:
-#         try:
-#             line = sys.stdin.readline()
-#             if not line:
-#                 break
-#
-#             data = json.loads(line)
-#
-#             if data.get("type") == "config":
-#                 ncm.update_config(data["config"])
-#                 continue
-#
-#             filename = data["filename"]
-#             conversation_name = Path(filename).stem
-#             content = data["content"]
-#             bufnr = data["bufnr"]
-#             end_pos = data["end_pos"]
-#
-#             ncm.load_conversation(conversation_name)
-#             ncm.append_message("user", content)
-#             response = ncm.send_messages()
-#             print(json.dumps({
-#                 "response": response,
-#                 "bufnr": bufnr,
-#                 "end_pos": end_pos
-#             }), flush=True)
-#
-#         except Exception as e:
-#             print(json.dumps({
-#                 "error": str(e)
-#             }), file=sys.stderr, flush=True)
-#
-#
-# if __name__ == "__main__":
-#     main()
-#

@@ -51,10 +51,16 @@ local function send_config(job_id)
 
   if not ok then
     vim.notify("Failed to encode JSON:" .. encoded, vim.log.levels.ERROR)
-    return
+    return false, "JSON encoding failed"
   end
 
-  send_to_python(job_id, encoded)
+  local success, err = pcall(send_to_python, job_id, encoded)
+  if not success then
+    vim.notify(string.format("Failed to send message to Python process: %s", err), vim.log.levels.ERROR)
+    return false, "Failed to send configuration"
+  end
+
+  return true
 end
 
 local job = nil
@@ -131,8 +137,17 @@ local function create_job(on_response)
           on_response()
         end)
       end
-      if data and data[1] and data[1] ~= "" then
-        print("Error:", data[1])
+      -- concatenate the error output
+      if data and #data > 0 then
+        -- filter out empty lines and concatenate with newlines
+        local error_lines = vim.tbl_filter(function(line)
+          return line and line ~= ""
+        end, data)
+
+        if #error_lines > 0 then
+          local error_msg = table.concat(error_lines, "\n")
+          vim.notify(string.format("Python error:\n%s", error_msg), vim.log.levels.ERROR)
+        end
       end
     end,
   })
@@ -142,7 +157,11 @@ local function create_job(on_response)
     return nil
   end
 
-  send_config(job_id)
+  local ok, err = pcall(send_config, job_id)
+  if not ok then
+    vim.notify(string.format("Error sending config: %s", err), vim.log.levels.ERROR)
+    return nil
+  end
   return job_id
 end
 
@@ -200,7 +219,11 @@ function M.send_selection()
   -- TODO: use pcall(vim.fn.json_encode(data))
   local json = vim.fn.json_encode(data)
 
-  send_to_python(job, json)
+  local ok, err = pcall(send_to_python, job, json)
+  if not ok then
+    vim.notify(string.format("Failed to send message to Python process: %s", err), vim.log.levels.ERROR)
+    return
+  end
 
   -- move the cursor to the end of the selection
   vim.api.nvim_win_set_cursor(0, { end_pos, 0 })
