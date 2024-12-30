@@ -67,6 +67,44 @@ local function send_config(job_id)
   return true
 end
 
+local function handle_response(data)
+  local ok, decoded = pcall(vim.fn.json_decode, data)
+  if not ok then
+    vim.notify("Failed to decode JSON response: " .. decoded, vim.log.levels.ERROR)
+    return
+  end
+
+  local success, err = pcall(vim.validate, {
+    response = { decoded.response, "string" },
+    bufnr = { decoded.bufnr, "number" },
+    end_pos = { decoded.end_pos, "number" },
+  })
+
+  if not success then
+    vim.notify("Invalid response format: " .. err, vim.log.levels.ERROR)
+    return
+  end
+
+  local response = decoded.response
+  local bufnr = decoded.bufnr
+  local end_pos = decoded.end_pos
+
+  if not is_valid_buffer(bufnr) then
+    vim.notify("The buffer is no longer valid", vim.log.levels.ERROR)
+    return
+  end
+
+  local response_lines = vim.split(response, "\n")
+  local formatted_response = { "" }
+  table.insert(formatted_response, "### Claude")
+  for _, line in ipairs(response_lines) do
+    table.insert(formatted_response, line)
+  end
+  table.insert(formatted_response, "___")
+
+  vim.api.nvim_buf_set_lines(bufnr, end_pos, end_pos, false, formatted_response)
+end
+
 local job = nil
 
 local function create_job(on_response)
@@ -85,48 +123,7 @@ local function create_job(on_response)
             on_response()
           end)
         end
-        local ok, decoded = pcall(vim.fn.json_decode, data[1])
-
-        if not ok then
-          vim.notify("Failed to decode JSON response:" .. decoded, vim.log.levels.Error)
-          return
-        end
-
-        local response = decoded.response
-        local bufnr = decoded.bufnr
-        local end_pos = decoded.end_pos
-
-        local missing_props = {}
-        if not response then
-          table.insert(missing_props, "response")
-        end
-        if not bufnr then
-          table.insert(missing_props, "bufnr")
-        end
-        if not end_pos then
-          table.insert(missing_props, "end_pos")
-        end
-
-        if #missing_props > 0 then
-          local error_msg =
-            string.format("Missing required properties in API response: %s", table.concat(missing_props, ", "))
-          vim.notify(error_msg, vim.log.levels.Error)
-          return
-        end
-
-        local response_lines = vim.split(response, "\n")
-        local formatted_response = { "" }
-        table.insert(formatted_response, "### Claude")
-        for _, line in ipairs(response_lines) do
-          table.insert(formatted_response, line)
-        end
-        table.insert(formatted_response, "___")
-
-        if vim.api.nvim_buf_is_valid(bufnr) then
-          vim.api.nvim_buf_set_lines(bufnr, end_pos, end_pos, false, formatted_response)
-        else
-          vim.notify("Buffer no longer valid", vim.log.levels.WARN)
-        end
+        handle_response(data)
       end
     end,
 
