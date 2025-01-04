@@ -1,3 +1,5 @@
+local fileid = require("markdown-fileid")
+local file_id_key = fileid.get_id_key()
 local M = {}
 
 local plugin_path = debug.getinfo(1).source:sub(2):match("(.*)/lua/")
@@ -157,20 +159,20 @@ local function create_job(on_response)
   return job_id
 end
 
-local function path_to_conversation_name(buffer_path)
-  -- First expand the full path to handle ~
-  local full_path = vim.fn.expand(buffer_path)
-  -- Then get the path relative to home
-  local home_relative = vim.fn.fnamemodify(full_path, ":~")
-  -- Replace both ~ and / with _ and remove any leading _ characters
-  return home_relative:gsub("[~/]", "_"):gsub("^_+", "")
-end
-
 function M.send_selection()
   local bufnr = vim.api.nvim_get_current_buf()
   -- make sure buffer is valid
   if not is_valid_buffer(bufnr) then
     vim.notify("Invalid buffer", vim.log.levels.ERROR)
+  end
+
+  local file_id = fileid.get_field(bufnr, file_id_key)
+  if not file_id then
+    vim.notify(
+      "Front matter file_id section not found. Run `:MarkdownFileIdAddField` to add the key",
+      vim.log.levels.INFO
+    )
+    return
   end
 
   local start_pos = vim.fn.getpos("'<")[2]
@@ -197,8 +199,6 @@ function M.send_selection()
   end
 
   local lines = vim.fn.getline(start_pos, end_pos)
-  local buffer_path = vim.api.nvim_buf_get_name(0)
-  local conversation_name = path_to_conversation_name(buffer_path)
 
   local text
   if type(lines) == "table" then
@@ -208,7 +208,7 @@ function M.send_selection()
   end
 
   local data = {
-    filename = conversation_name,
+    file_id = file_id,
     bufnr = bufnr,
     end_pos = end_pos,
     content = text,

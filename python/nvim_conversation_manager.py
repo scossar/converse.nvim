@@ -220,16 +220,12 @@ def main():
                     continue
 
                 # Validate required fields
-                required_fields = ["filename", "content", "bufnr", "end_pos"]
+                required_fields = ["file_id", "content", "bufnr", "end_pos"]
                 missing_fields = [field for field in required_fields if field not in data]
                 if missing_fields:
                     raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
 
-                try:
-                    conversation_name = Path(data["filename"]).stem
-                except Exception as e:
-                    raise ValueError(f"Invalid filename: {str(e)}")
-
+                conversation_name = data["file_id"]
                 ncm.load_conversation(conversation_name)
                 ncm.append_message("user", data["content"])
                 response = ncm.send_messages()
