@@ -193,6 +193,51 @@ def check_dependencies():
         sys.exit(1)
 
 
+def read_input():
+    try:
+        line = sys.stdin.readline()
+        if not line:
+            return None
+        return json.loads(line)
+    except IOError as e:
+        raise ValueError(f"Failed to read from stdin: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON received: {str(e)}")
+
+
+def handle_config(ncm, data):
+    if "config" not in data:
+        raise ValueError("Config message missing 'config' field")
+    ncm.update_config(data["config"])
+
+
+def validate_data(data):
+    if not isinstance(data, dict):
+        raise ValueError("Input must be a JSON object")
+    required_fields = ["file_id", "content", "bufnr", "end_pos"]
+    missing_fields = [field for field in required_fields if field not in data]
+    if missing_fields:
+        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+
+
+def process_message(ncm, data):
+    conversation_name = data["file_id"]
+    ncm.load_conversation(conversation_name)
+    ncm.append_message("user", data["content"])
+    return ncm.send_messages()
+
+
+def send_response(response, bufnr, end_pos):
+    try:
+        print(json.dumps({
+            "response": response,
+            "bufnr": bufnr,
+            "end_pos": end_pos
+        }), flush=True)
+    except (IOError, json.JSONEncodeError) as e:
+        raise ValueError(f"Failed to send response: {str(e)}")
+
+
 def main():
     try:
         check_dependencies()
@@ -200,44 +245,18 @@ def main():
 
         while True:
             try:
-                try:
-                    line = sys.stdin.readline()
-                except IOError as e:
-                    raise ValueError(f"Failed to read from stdin: {str(e)}")
 
-                if not line:
+                data = read_input()
+                if data is None:
                     break
 
-                try:
-                    data = json.loads(line)
-                except json.JSONDecodeError as e:
-                    raise ValueError(f"Invalid JSON received: {str(e)}")
-
                 if data.get("type") == "config":
-                    if "config" not in data:
-                        raise ValueError("Config message missing 'config' field")
-                    ncm.update_config(data["config"])
+                    handle_config(ncm, data)
                     continue
 
-                # Validate required fields
-                required_fields = ["file_id", "content", "bufnr", "end_pos"]
-                missing_fields = [field for field in required_fields if field not in data]
-                if missing_fields:
-                    raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-
-                conversation_name = data["file_id"]
-                ncm.load_conversation(conversation_name)
-                ncm.append_message("user", data["content"])
-                response = ncm.send_messages()
-
-                try:
-                    print(json.dumps({
-                        "response": response,
-                        "bufnr": data["bufnr"],
-                        "end_pos": data["end_pos"]
-                    }), flush=True)
-                except (IOError, json.JSONEncodeError) as e:
-                    raise ValueError(f"Failed to send response: {str(e)}")
+                validate_data(data)
+                response = process_message(ncm, data)
+                send_response(response, data["bufnr"], data["end_pos"])
 
             except Exception as e:
                 print(json.dumps({
