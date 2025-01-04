@@ -8,7 +8,7 @@ I wrote the plugin to help me use LLMs as a learning tool. Switching contexts be
 
 ### Neovim
 
-The plugin requires Neovim `>= 0.9.0` and (markdown-fileid.nvim)[https://github.com/scossar/markdown-fileid.nvim].
+The plugin requires Neovim `>= 0.9.0` and [markdown-fileid.nvim](https://github.com/scossar/markdown-fileid.nvim).
 
 ### Python
 
