@@ -1,5 +1,6 @@
 local fileid = require("markdown-fileid")
 local file_id_key = fileid.get_id_key()
+local prefilled_prompts = require("converse.prompts").prompts
 local M = {}
 
 local plugin_path = debug.getinfo(1).source:sub(2):match("(.*)/lua/")
@@ -325,13 +326,32 @@ function M.setup(opts)
     end,
   })
 
-  vim.api.nvim_create_user_command("ConverseSystem", function(args)
-    local system_prompt = args.args
-    M.update_config({ system = system_prompt })
-    vim.notify(string.format("Claude system prompt set to '%s'", system_prompt))
+  vim.api.nvim_create_user_command("ConverseSystemCustom", function(args)
+    M.update_config({ system = args.args })
+    vim.notify(string.format("Claude custom system prompt set to '%s'", args.args))
   end, {
     nargs = 1,
-    desc = "Set Claude system prompt",
+    desc = "Set custom Claude system prompt",
+  })
+
+  vim.api.nvim_create_user_command("ConverseSystemSelect", function(args)
+    local prompt = prefilled_prompts[args.args]
+    if not prompt then
+      vim.notify("Invalid prompt selection", vim.log.levels.ERROR)
+      return
+    end
+    M.update_config({ system = prompt })
+    vim.notify(string.format("Claude system prompt set to '%s'", args.args))
+  end, {
+    nargs = 1,
+    desc = "Select predefined Claude system prompt",
+    complete = function()
+      local keys = {}
+      for k, _ in pairs(prefilled_prompts) do
+        table.insert(keys, k)
+      end
+      return keys
+    end,
   })
 end
 
