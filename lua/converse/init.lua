@@ -26,7 +26,7 @@ end
 M.config = {
   -- API related settings
   api = {
-    model = "claude-3-5-sonnet-20241022",
+    model = "claude-3-7-sonnet-latest",
     max_tokens = 8192,
     temperature = 0.7,
     system = "",
