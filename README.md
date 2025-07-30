@@ -10,20 +10,12 @@ Neovim `>= 0.9.0` and [markdown-fileid.nvim](https://github.com/scossar/markdown
 
 ### Python
 
+Python `>= 3.7`, and the [Anthropic Python API library](https://github.com/anthropics/anthropic-sdk-python)
 
-Python `>= 3.7`, and the [Anthropic Python API library](https://github.com/anthropics/anthropic-sdk-python).
+NOTE: The plugin assumes that `g:python3_host_prog` is configured and that the Anthropic Python API library is installed in that environment. See `:help python3_host_prog` for some details about configuring the Python virtual env. Essentially, after creating a virtual env with a tool like Mise or Pyenv, add something like the following to your `init.lua` file:
 
-The easiest way I know of for dealing with Python dependencies is to use [`pip`](https://pip.pypa.io/en/stable/getting-started/):
-
-```bash
-pip install anthropic
-```
-Or (better) in a [virtual environment](https://packaging.python.org/en/latest/tutorials/installing-packages/#creating-virtual-environments):
-
-```bash
-python -m venv ~/.venv/converse
-source ~/.venv/converse/bin/activate  # On Unix/macOS
-pip install anthropic
+```lua
+vim.g.python3_host_prog = vim.fn.expand("~/path/to/virtual_env/bin/python")
 ```
 
 The plugin also requires an Anthropic API key and assumes that `ANTHROPIC_API_KEY` is set as an environmental variable. For example, in your `~/.bashrc` file:
@@ -47,6 +39,7 @@ export ANTHROPIC_API_KEY='your_anthropic_api_key'
   end
 }
 ```
+
 ## Configuration
 
 ### Default Configuration
@@ -73,6 +66,7 @@ require("converse").setup({
   }
 })
 ```
+
 ### API options
 
 - `model`: the Claude model to use. Currently defaults to Claude 3.5 Sonnet
@@ -84,6 +78,7 @@ require("converse").setup({
 ### Loggin options
 
 (logs data from the Python process)
+
 - `enabled`: set to `false` to disable logging
 - `level`: the log level (the default value of `"INFO"` is probably a bit much, will fix soon). Allowed levels are: `"NOTSET"` (log all messages), `"DEBUG"`, `"WARNING"`, `"ERROR"`, `"CRITICAL"`.
 - `dir`: the directory that logs are saved to
@@ -134,4 +129,3 @@ The system prompt defaults to an empty string. That works fine for many cases.
 - allow some of the context of a conversation to be copied to a new file
 
 Feel free to report any issues or bugs you run into.
-
