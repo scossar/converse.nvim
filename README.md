@@ -47,7 +47,7 @@ export ANTHROPIC_API_KEY='your_anthropic_api_key'
 ```lua
 require("converse").setup({
   api = {
-    model = "claude-3-5-sonnet-20241022",  -- The Claude model to use
+    model = "claude-opus-4-20250514",  -- The Claude model to use
     max_tokens = 8192,                      -- Maximum tokens in the response
     temperature = 0.7,                      -- Response temperature (0-1)
     system = "",                           -- System prompt (if needed)
@@ -69,13 +69,13 @@ require("converse").setup({
 
 ### API options
 
-- `model`: the Claude model to use. Currently defaults to Claude 3.5 Sonnet
+- `model`: the Claude model to use. Currently defaults to Claude Opus 4
 - `max_tokens`: maximum number of tokens in Claude's response
 - `temperature`: controls response randomness (0 = more deterministic, 1 = more creative)
 - `system`: optional system prompt to set context for Claude
 - `conv_dir`: directory where conversation JSON files are stored
 
-### Loggin options
+### Logging options
 
 (logs data from the Python process)
 
@@ -85,7 +85,7 @@ require("converse").setup({
 
 ### Key mappings
 
-- `ConverseSendSelection` (mapped by default to <leader>z (for some reason))
+- `ConverseSendSelection` (mapped by default to <leader>z)
 
 You can change this with the `mappings.send_selection` option:
 
@@ -127,5 +127,3 @@ The system prompt defaults to an empty string. That works fine for many cases.
 
 - make the text that's prepended to Claude's responses configurable
 - allow some of the context of a conversation to be copied to a new file
-
-Feel free to report any issues or bugs you run into.
