@@ -37,9 +37,11 @@ class NvimConversationManager:
         try:
             log_dir.mkdir(parents=True, exist_ok=True)
         except PermissionError:
-            raise ValueError(f"No permission to create logging directory: {log_dir}")
+            raise ValueError(
+                f"No permission to create logging directory: {log_dir}")
         except OSError as e:
-            raise ValueError(f"Failed to create logging directory: {log_dir} - {str(e)}")
+            raise ValueError(
+                f"Failed to create logging directory: {log_dir} - {str(e)}")
 
         log_file = log_dir / "converse.log"
 
@@ -55,7 +57,8 @@ class NvimConversationManager:
             encoding="utf-8"
         )
 
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         handler.setLevel(log_level)
 
@@ -66,17 +69,22 @@ class NvimConversationManager:
 
     def update_config(self, new_config: dict):
         if not all(key in new_config for key in ["api", "logging"]):
-            raise ValueError("Missing required config sections: api and/or logging")
+            raise ValueError(
+                "Missing required config sections: api and/or logging")
 
         api_config = new_config.get("api", {})
         logging_config = new_config.get("logging", {})
 
-        required_api_keys = ["model", "max_tokens", "temperature", "conv_dir", "system"]
-        missing_keys = [key for key in required_api_keys if key not in api_config]
+        required_api_keys = ["model", "max_tokens",
+                             "temperature", "conv_dir", "system"]
+        missing_keys = [
+            key for key in required_api_keys if key not in api_config]
         required_logger_keys = ["enabled", "level", "dir"]
-        missing_keys.extend([key for key in required_logger_keys if key not in logging_config])
+        missing_keys.extend(
+            [key for key in required_logger_keys if key not in logging_config])
         if missing_keys:
-            raise ValueError(f"Missing required config keys: {', '.join(missing_keys)}")
+            raise ValueError(
+                f"Missing required config keys: {', '.join(missing_keys)}")
 
         if not isinstance(api_config["max_tokens"], int) or api_config["max_tokens"] <= 0:
             raise ValueError("max_tokens must be a positive integer")
@@ -108,9 +116,11 @@ class NvimConversationManager:
             self.conv_dir = Path(self.config["api"]["conv_dir"])
             self.conv_dir.mkdir(parents=True, exist_ok=True)
         except PermissionError:
-            raise ValueError(f"No permission to create conversation directory: {self.conv_dir}")
+            raise ValueError(
+                f"No permission to create conversation directory: {self.conv_dir}")
         except OSError as e:
-            raise ValueError(f"Failed to create conversation directory: {self.conv_dir} - {str(e)}")
+            raise ValueError(
+                f"Failed to create conversation directory: {self.conv_dir} - {str(e)}")
 
     def set_conversation(self, name: str):
         self.conv_name = name
@@ -130,10 +140,12 @@ class NvimConversationManager:
             with open(self.json_file, "w", encoding='utf-8') as f:
                 json.dump(messages, f, indent=2)
         except IOError as e:
-            self.logger.error(f"Failed to write conversation to {self.json_file}: {str(e)}")
+            self.logger.error(
+                f"Failed to write conversation to {self.json_file}: {str(e)}")
             raise ValueError(f"Failed to save conversation: {str(e)}")
         except json.JSONEncodeError as e:
-            self.logger.error(f"Failed to serialize conversation data: {str(e)}")
+            self.logger.error(
+                f"Failed to serialize conversation data: {str(e)}")
             raise ValueError(f"Failed to encode conversation data: {str(e)}")
 
         self.logger.debug(f"Saved conversation to {self.json_file}")
@@ -162,7 +174,8 @@ class NvimConversationManager:
                 )
             except Exception as e:
                 self.logger.error(f"API call failed: {str(e)}")
-                raise ValueError(f"Failed to get response from Anthropic API: {str(e)}")
+                raise ValueError(
+                    f"Failed to get response from Anthropic API: {str(e)}")
 
             if not response or not response.content:
                 self.logger.error("Received empty response from API")
@@ -171,7 +184,8 @@ class NvimConversationManager:
             try:
                 content = response.content[0].text
             except (IndexError, AttributeError) as e:
-                self.logger.error(f"Failed to extract content from response: {str(e)}")
+                self.logger.error(
+                    f"Failed to extract content from response: {str(e)}")
                 raise ValueError(f"Unexpected response format: {str(e)}")
 
             self.append_message("assistant", content)
@@ -217,7 +231,8 @@ def validate_data(data):
     required_fields = ["file_id", "content", "bufnr", "end_pos"]
     missing_fields = [field for field in required_fields if field not in data]
     if missing_fields:
-        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+        raise ValueError(
+            f"Missing required fields: {', '.join(missing_fields)}")
 
 
 def process_message(ncm, data):

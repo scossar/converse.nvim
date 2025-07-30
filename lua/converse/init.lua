@@ -5,6 +5,10 @@ local M = {}
 
 local plugin_path = debug.getinfo(1).source:sub(2):match("(.*)/lua/")
 local python_script_path = plugin_path .. "/python/nvim_conversation_manager.py"
+-- NOTE: this is assuming that `vim.g.python3_host_prog` has been set:
+local function get_python_path()
+  return vim.g.python3_host_prog
+end
 
 local highlight_ns = vim.api.nvim_create_namespace("converse_highlight")
 
@@ -26,7 +30,7 @@ end
 M.config = {
   -- API related settings
   api = {
-    model = "claude-3-7-sonnet-latest",
+    model = "claude-opus-4-20250514",
     max_tokens = 8192,
     temperature = 0.7,
     system = "",
@@ -111,7 +115,8 @@ end
 local job = nil
 
 local function create_job(on_response)
-  local job_id = vim.fn.jobstart({ "python", python_script_path }, {
+  local python_path = get_python_path()
+  local job_id = vim.fn.jobstart({ python_path, python_script_path }, {
     on_exit = function(_, exit_code)
       job = nil -- clear job reference when process exits
       if exit_code ~= 0 then
