@@ -30,7 +30,7 @@ end
 M.config = {
   -- API related settings
   api = {
-    model = "claude-opus-4-20250514",
+    model = "claude-opus-4-1-20250805",
     max_tokens = 8192,
     temperature = 0.7,
     system = "",
