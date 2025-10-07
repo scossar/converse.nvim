@@ -110,7 +110,7 @@ require("converse").setup({
 - `:ConverseSendSelection` - send the selected text to Claude (can also be triggered with a keybinding)
 - `:ConverseTemp` - adjust Claude's temperature setting (0-1)
 - `:ConverseSystemCustom` - set a custom system prompt
-- `:ConverseSystemSelect` - select from a list of system prompts (currently claude_3_5_sonnet: [docs.anthropic.com/en/release-notes/system-prompts#nov-22nd-2024](https://docs.anthropic.com/en/release-notes/system-prompts#nov-22nd-2024))
+- `:ConverseSystemSelect` - select from a list of system prompts
 - `:MarkdownFileIdAddField` - supplied by `markdown-fileid.nvim`. Adds a file ID key/value pair to a front matter section at the top of the file. If you attempt to run `:ConverseSendSelection` before adding the file ID front matter, you'll get a message asking you to run the `:MarkdownFileIdAdd` command.
 
 ## Notes
