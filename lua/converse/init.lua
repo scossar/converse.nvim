@@ -103,7 +103,8 @@ local function handle_response(data)
 
   local response_lines = vim.split(response, "\n")
   local formatted_response = { "" }
-  table.insert(formatted_response, "__Claude__:")
+  table.insert(formatted_response, "___")
+  table.insert(formatted_response, "**Claude**:")
   for _, line in ipairs(response_lines) do
     table.insert(formatted_response, line)
   end
